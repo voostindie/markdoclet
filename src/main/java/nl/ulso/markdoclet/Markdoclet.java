@@ -94,16 +94,12 @@ public class Markdoclet {
                 }
                 optionsFound.add(name);
                 final String value = option[1];
-                switch (name) {
-                    case OPTION_OUTPUT:
-                        valid = valid && verifyOutputFile(value, reporter);
-                        break;
-                    case OPTION_PROPERTIES:
-                        valid = valid && verifyPropertiesFile(value, reporter);
-                        break;
-                    case OPTION_TITLE:
-                        valid = valid && verifyTitle(value);
-                        break;
+                if (name.equals(OPTION_OUTPUT)) {
+                    valid = valid && verifyOutputFile(value, reporter);
+                } else if (name.equals(OPTION_PROPERTIES)) {
+                    valid = valid && verifyPropertiesFile(value, reporter);
+                } else if (name.equals(OPTION_TITLE)) {
+                    valid = valid && verifyTitle(value);
                 }
             }
         }
