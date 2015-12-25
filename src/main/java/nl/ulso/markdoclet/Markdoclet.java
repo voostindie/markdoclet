@@ -102,7 +102,7 @@ public class Markdoclet {
                         valid = valid && verifyPropertiesFile(value, reporter);
                         break;
                     case OPTION_TITLE:
-                        valid = valid && verifyTitle(value, reporter);
+                        valid = valid && verifyTitle(value);
                         break;
                 }
             }
@@ -140,7 +140,7 @@ public class Markdoclet {
         return true;
     }
 
-    private static boolean verifyTitle(String value, DocErrorReporter reporter) {
+    private static boolean verifyTitle(String value) {
         title = value;
         return true;
     }
