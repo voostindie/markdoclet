@@ -1,0 +1,27 @@
+#!/bin/sh
+if type -p java &> /dev/null; then
+    VERSION=`java -version 2>&1 | grep "java version" | awk '{print $3}' | tr -d \" | awk '{split($0, array, ".")} END{print array[2]}'`
+    if [[ $VERSION -lt 8 ]]; then
+        echo "You need Java 8 or higher to be available in the path."
+        exit
+    fi
+else
+    echo "No Java found on the path. Java 8 or higher is needed."
+    exit
+fi
+
+PRG="$0"
+
+while [ -h "$PRG" ]; do
+  ls=`ls -ld "$PRG"`
+  link=`expr "$ls" : '.*-> \(.*\)$'`
+  if expr "$link" : '/.*' > /dev/null; then
+    PRG="$link"
+  else
+    PRG=`dirname "$PRG"`/"$link"
+  fi
+done
+
+PRGDIR=`dirname "$PRG"`
+
+javadoc -doclet nl.ulso.markdoclet.Markdoclet -docletpath $PRGDIR/build/libs/markdoclet-all.jar ${1+"$@"}

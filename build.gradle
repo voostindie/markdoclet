@@ -1,0 +1,22 @@
+plugins {
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '1.2.2'
+}
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    compile files("${System.properties['java.home']}/../lib/tools.jar")
+    compile 'org.freemarker:freemarker:2.3.23'
+
+    testCompile 'junit:junit:4.12'
+}
+
+shadowJar {
+    exclude 'com/sun/**'
+    exclude 'sun/**'
+    exclude 'org/relaxng/**'
+    exclude 'META-INF/services/com.sun.*'
+}
