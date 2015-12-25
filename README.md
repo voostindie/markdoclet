@@ -1,5 +1,7 @@
 # Markdoclet
 
+[![Build Status](https://travis-ci.org/voostindie/markdoclet.svg?branch=master)](https://travis-ci.org/voostindie/markdoclet)
+
 This Doclet generates Markdown documentation out of Javadoc. Before you run outside to go jumping with joy please continue reading, because this Doclet probably doesn't do what you'd expect.
 
 **This Doclet doesn't generate documentation out of normal Javadoc comments!**
