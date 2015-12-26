@@ -28,6 +28,9 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 
+/**
+ * Writes a Document to a Markdown file using a Freemarker template.
+ */
 public class DocumentToMarkdownWriter {
 
     private final PrintWriter writer;
