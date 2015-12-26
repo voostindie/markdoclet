@@ -50,12 +50,9 @@ public abstract class Section {
         }
 
         public Builder<B> withParagraph(String type, String contents) {
-            paragraphs.add(createParagraph(type, contents));
+            paragraphs.add(new Paragraph(type, contents));
             return this;
         }
 
-        private Paragraph createParagraph(String type, String contents) {
-            return new Paragraph(type, contents);
-        }
     }
 }
