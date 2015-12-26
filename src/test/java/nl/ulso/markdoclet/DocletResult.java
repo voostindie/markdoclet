@@ -21,6 +21,7 @@ import java.util.List;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.*;
 
 public class DocletResult {
@@ -44,6 +45,10 @@ public class DocletResult {
 
     public void assertOutput(String text) {
         assertThat(output, containsString(text));
+    }
+
+    public void assertNoOutput(String text) {
+        assertThat(output, not(containsString(text)));
     }
 
     public void assertNoOutput() {

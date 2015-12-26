@@ -78,6 +78,8 @@ For example, given this properties file:
 
     If the user is an employee on the internal network: does nothing. Employees are identified using SSO with smartcards. Logging out is not an option.
 
+Sometimes it's useful to hide a certain something. Whenever that's the case, just add a `@md.hide` tag on it. Then it will be skipped completely in the Markdown output.
+
 ## How to build and run
 
 To build, run `gradle shadowJar` Then to use, run `./markdoclet`. You can symlink to this file from somewhere in the path and then run it wherever you want.

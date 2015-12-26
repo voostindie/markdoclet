@@ -19,6 +19,7 @@ package nl.ulso.markdoclet;
 
 import test.user.Customer;
 import test.user.User;
+import test.user.UserProfileService;
 import test.user.UserType;
 import org.junit.Test;
 
@@ -59,6 +60,15 @@ public class MarkdocletTest extends AbstractDocletTestCase {
         result.assertSuccess();
         result.assertOutput("If the site is accessed by logged-on users");
         result.assertOutput("If the site is accessed by anonymous users");
+        result.assertNoErrors();
+    }
+
+    @Test
+    public void interfaceWithHideTagDoesNotAppearInOutput() throws Exception {
+        final DocletResult result = runDoclet(asList("-output", "test.md"), UserProfileService.class);
+        result.assertSuccess();
+        result.assertOutput("# API documentation");
+        result.assertNoOutput("UserProfileService");
         result.assertNoErrors();
     }
 }

@@ -33,6 +33,7 @@ import java.util.stream.Stream;
  * For normal documentation that must always show up in the Markdown document, use {@code @md.common}. Any
  * documentation under this tag will be unconditionally copied to the output.
  * </p>
+ * To hide an interface, attribute, operation, enumeration, or constant, add a {@code md.hide} tag.
  * <p>
  * For special cases you can use any kind of tag, as long as it starts with {@code @md.}. But: when running
  * JavaDoc with this Doclet you should then also pass it a reference to a properties file that contains a
@@ -50,6 +51,7 @@ import java.util.stream.Stream;
 public class JavadocToDocumentConverter {
 
     private static final String CUSTOM_TAG_PREFIX = "@md.";
+    private static final String HIDE_TAG = CUSTOM_TAG_PREFIX + "hide";
 
     private final RootDoc root;
     private final String title;
@@ -72,6 +74,7 @@ public class JavadocToDocumentConverter {
     private void buildInterfaces(Document.Builder documentBuilder) {
         Stream.of(root.classes())
                 .filter(Doc::isInterface)
+                .filter(this::isVisible)
                 .peek(c -> printNotice("interface", c.name()))
                 .forEach(c -> {
                     final Interface.Builder builder = documentBuilder.withInterface(c.name());
@@ -84,6 +87,7 @@ public class JavadocToDocumentConverter {
     private void buildAttributes(Interface.Builder interfaceBuilder, ClassDoc clazz) {
         Stream.of(clazz.methods())
                 .filter(m -> isAttribute(m.name()))
+                .filter(this::isVisible)
                 .peek(m -> printNotice("attribute", m.name()))
                 .forEach(m -> {
                     final Attribute.Builder builder = interfaceBuilder.withAttribute(
@@ -95,6 +99,7 @@ public class JavadocToDocumentConverter {
     private void buildOperations(Interface.Builder interfaceBuilder, ClassDoc clazz) {
         Stream.of(clazz.methods())
                 .filter(m -> isOperation(m.name()))
+                .filter(this::isVisible)
                 .peek(m -> printNotice("operation", m.name()))
                 .forEach(m -> {
                     final Operation.Builder builder = interfaceBuilder.withOperation(
@@ -120,19 +125,23 @@ public class JavadocToDocumentConverter {
     private void buildEnumerations(Document.Builder documentBuilder) {
         Stream.of(root.classes())
                 .filter(Doc::isEnum)
+                .filter(this::isVisible)
                 .peek(c -> printNotice("enumeration", c.name()))
                 .forEach(c -> {
                     final Enumeration.Builder builder = documentBuilder.withEnumeration(c.name());
                     buildParagraphs(builder, c.tags());
-                    Stream.of(c.enumConstants())
-                            .peek(f -> printNotice("constant", f.name()))
-                            .forEach(f -> buildConstants(builder, f));
+                    buildConstants(builder, c);
                 });
     }
 
-    private void buildConstants(Enumeration.Builder enumerationBuilder, FieldDoc field) {
-        final Constant.Builder builder = enumerationBuilder.withConstant(field.name());
-        buildParagraphs(builder, field.tags());
+    private void buildConstants(Enumeration.Builder enumerationBuilder, ClassDoc clazz) {
+        Stream.of(clazz.enumConstants())
+                .filter(this::isVisible)
+                .peek(f -> printNotice("constant", f.name()))
+                .forEach(f -> {
+                    final Constant.Builder builder = enumerationBuilder.withConstant(f.name());
+                    buildParagraphs(builder, f.tags());
+                });
     }
 
     private void buildParagraphs(Section.Builder builder, Tag[] tags) {
@@ -143,6 +152,10 @@ public class JavadocToDocumentConverter {
 
     private boolean isDocumentationTag(String name) {
         return name.startsWith(CUSTOM_TAG_PREFIX);
+    }
+
+    private boolean isVisible(Doc doc) {
+        return Stream.of(doc.tags()).map(Tag::name).noneMatch(n -> n.equals(HIDE_TAG));
     }
 
     private void printNotice(String type, String name) {
