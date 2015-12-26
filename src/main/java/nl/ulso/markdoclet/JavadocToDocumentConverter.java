@@ -78,10 +78,10 @@ public class JavadocToDocumentConverter {
         Stream.of(root.classes())
                 .filter(Doc::isInterface)
                 .filter(this::isVisible)
-                .peek(c -> printNotice("interface", c.name()))
+                .peek(this::log)
                 .forEach(c -> {
                     final Interface.Builder builder = documentBuilder.withInterface(c.name());
-                    buildParagraphs(builder, c.tags());
+                    buildParagraphs(builder, c);
                     buildAttributes(builder, c);
                     buildOperations(builder, c);
                 });
@@ -91,11 +91,11 @@ public class JavadocToDocumentConverter {
         Stream.of(clazz.methods())
                 .filter(this::isAttribute)
                 .filter(this::isVisible)
-                .peek(m -> printNotice("attribute", m.name()))
+                .peek(this::log)
                 .forEach(m -> {
                     final Attribute.Builder builder = interfaceBuilder.withAttribute(
                             asAttributeName(m.name()), m.returnType().simpleTypeName());
-                    buildParagraphs(builder, m.tags());
+                    buildParagraphs(builder, m);
                 });
     }
 
@@ -103,11 +103,11 @@ public class JavadocToDocumentConverter {
         Stream.of(clazz.methods())
                 .filter(this::isOperation)
                 .filter(this::isVisible)
-                .peek(m -> printNotice("operation", m.name()))
+                .peek(this::log)
                 .forEach(m -> {
                     final Operation.Builder builder = interfaceBuilder.withOperation(
                             m.name(), m.returnType().simpleTypeName());
-                    buildParagraphs(builder, m.tags());
+                    buildParagraphs(builder, m);
                     Stream.of(m.parameters()).forEach(p -> builder.withParameter(p.name(), p.type().simpleTypeName()));
                 });
     }
@@ -128,10 +128,10 @@ public class JavadocToDocumentConverter {
         Stream.of(root.classes())
                 .filter(Doc::isEnum)
                 .filter(this::isVisible)
-                .peek(c -> printNotice("enumeration", c.name()))
+                .peek(this::log)
                 .forEach(c -> {
                     final Enumeration.Builder builder = documentBuilder.withEnumeration(c.name());
-                    buildParagraphs(builder, c.tags());
+                    buildParagraphs(builder, c);
                     buildConstants(builder, c);
                 });
     }
@@ -139,28 +139,40 @@ public class JavadocToDocumentConverter {
     private void buildConstants(Enumeration.Builder enumerationBuilder, ClassDoc clazz) {
         Stream.of(clazz.enumConstants())
                 .filter(this::isVisible)
-                .peek(f -> printNotice("constant", f.name()))
+                .peek(this::log)
                 .forEach(f -> {
                     final Constant.Builder builder = enumerationBuilder.withConstant(f.name());
-                    buildParagraphs(builder, f.tags());
+                    buildParagraphs(builder, f);
                 });
     }
 
-    private void buildParagraphs(Section.Builder builder, Tag[] tags) {
-        Stream.of(tags)
-                .filter(t -> isDocumentationTag(t.name()))
+    private void buildParagraphs(Section.Builder builder, Doc doc) {
+        Stream.of(doc.tags())
+                .filter(this::isDocumentation)
                 .forEach(t -> builder.withParagraph(t.name().substring(CUSTOM_TAG_PREFIX.length()), t.text()));
     }
 
-    private boolean isDocumentationTag(String name) {
-        return name.startsWith(CUSTOM_TAG_PREFIX);
+    private boolean isDocumentation(Tag tag) {
+        return tag.name().startsWith(CUSTOM_TAG_PREFIX);
     }
 
     private boolean isVisible(Doc doc) {
-        return Stream.of(doc.tags()).map(Tag::name).noneMatch(n -> n.equals(HIDE_TAG));
+        return Stream.of(doc.tags()).map(Tag::name).noneMatch(HIDE_TAG::equals);
     }
 
-    private void printNotice(String type, String name) {
-        root.printNotice("Construction documentation for " + type + " " + name);
+    private void log(Doc doc) {
+        String type;
+        if (doc.isInterface()) {
+            type = "interface";
+        } else if (doc.isEnum()) {
+            type = "enumeration";
+        } else if (doc.isMethod()) {
+            type = "method";
+        } else if (doc.isEnumConstant()) {
+            type = "constant";
+        } else {
+            type = "type";
+        }
+        root.printNotice("Construction documentation for " + type + " " + doc.name());
     }
 }
