@@ -22,6 +22,8 @@ import java.util.stream.Collectors;
 
 public class Document {
 
+    public static final String COMMON_PARAGRAPH_TYPE = "common";
+
     private final String title;
     private final List<Interface> interfaces;
     private final List<Enumeration> enumerations;
@@ -29,7 +31,6 @@ public class Document {
 
     private Document(Builder builder) {
         title = builder.title;
-        // TODO: automatically order the interfaces in a smart way.
         interfaces = builder.interfaces.stream()
                 .map(Interface.Builder::build)
                 .collect(Collectors.toList());
@@ -71,7 +72,7 @@ public class Document {
         private Builder(String title) {
             this.title = title;
             paragraphDescriptions = new HashMap<>();
-            paragraphDescriptions.put("common", "");
+            paragraphDescriptions.put(COMMON_PARAGRAPH_TYPE, "");
             interfaces = new ArrayList<>();
             enumerations = new ArrayList<>();
         }
