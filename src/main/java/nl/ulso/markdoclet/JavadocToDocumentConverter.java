@@ -17,7 +17,10 @@
 
 package nl.ulso.markdoclet;
 
-import com.sun.javadoc.*;
+import com.sun.javadoc.ClassDoc;
+import com.sun.javadoc.Doc;
+import com.sun.javadoc.RootDoc;
+import com.sun.javadoc.Tag;
 import nl.ulso.markdoclet.document.*;
 
 import java.util.Properties;
@@ -86,7 +89,7 @@ public class JavadocToDocumentConverter {
 
     private void buildAttributes(Interface.Builder interfaceBuilder, ClassDoc clazz) {
         Stream.of(clazz.methods())
-                .filter(m -> isAttribute(m.name()))
+                .filter(this::isAttribute)
                 .filter(this::isVisible)
                 .peek(m -> printNotice("attribute", m.name()))
                 .forEach(m -> {
@@ -98,28 +101,27 @@ public class JavadocToDocumentConverter {
 
     private void buildOperations(Interface.Builder interfaceBuilder, ClassDoc clazz) {
         Stream.of(clazz.methods())
-                .filter(m -> isOperation(m.name()))
+                .filter(this::isOperation)
                 .filter(this::isVisible)
                 .peek(m -> printNotice("operation", m.name()))
                 .forEach(m -> {
                     final Operation.Builder builder = interfaceBuilder.withOperation(
                             m.name(), m.returnType().simpleTypeName());
                     buildParagraphs(builder, m.tags());
-                    Stream.of(m.parameters())
-                            .forEach(p -> builder.withParameter(p.name(), p.type().simpleTypeName()));
+                    Stream.of(m.parameters()).forEach(p -> builder.withParameter(p.name(), p.type().simpleTypeName()));
                 });
     }
 
-    private boolean isAttribute(String name) {
-        return name.startsWith("get") || name.startsWith("is");
+    private boolean isAttribute(Doc doc) {
+        return doc.name().startsWith("get") || doc.name().startsWith("is");
     }
 
     private String asAttributeName(String name) {
         return name.substring(name.startsWith("is") ? 2 : 3);
     }
 
-    private boolean isOperation(String name) {
-        return !isAttribute(name);
+    private boolean isOperation(Doc doc) {
+        return !isAttribute(doc);
     }
 
     private void buildEnumerations(Document.Builder documentBuilder) {
