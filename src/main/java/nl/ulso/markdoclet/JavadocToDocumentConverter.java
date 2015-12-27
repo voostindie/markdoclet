@@ -161,7 +161,7 @@ public class JavadocToDocumentConverter {
     }
 
     private void log(Doc doc) {
-        String type;
+        final String type;
         if (doc.isInterface()) {
             type = "interface";
         } else if (doc.isEnum()) {
@@ -173,6 +173,6 @@ public class JavadocToDocumentConverter {
         } else {
             type = "type";
         }
-        root.printNotice("Construction documentation for " + type + " " + doc.name());
+        root.printNotice("Constructing documentation for " + type + " " + doc.name());
     }
 }
