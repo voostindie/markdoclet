@@ -1,7 +1,8 @@
 # Markdoclet
 
 [![Build Status](https://travis-ci.org/voostindie/markdoclet.svg?branch=master)](https://travis-ci.org/voostindie/markdoclet)
-[![Codacy Badge](https://api.codacy.com/project/badge/grade/26e52379352442b6ab896d117cb58c57)](https://www.codacy.com/app/voostindie/markdoclet)
+[![Code Quality](https://api.codacy.com/project/badge/grade/26e52379352442b6ab896d117cb58c57)](https://www.codacy.com/app/voostindie/markdoclet)
+[![Code Coverage](https://api.codacy.com/project/badge/coverage/26e52379352442b6ab896d117cb58c57)](https://www.codacy.com/app/voostindie/markdoclet)
 
 This Doclet generates Markdown documentation out of Javadoc comments. Before you run outside to go jumping with joy please continue reading, because this Doclet probably doesn't do what you'd expect.
 
