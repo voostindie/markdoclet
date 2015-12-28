@@ -24,7 +24,10 @@ import com.sun.javadoc.Tag;
 import nl.ulso.markdoclet.document.*;
 
 import java.util.Properties;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.joining;
 
 /**
  * Generates functional documentation in Markdown format from Java API's.
@@ -55,6 +58,8 @@ public class JavadocToDocumentConverter {
 
     private static final String CUSTOM_TAG_PREFIX = "@md.";
     private static final String HIDE_TAG = CUSTOM_TAG_PREFIX + "hide";
+    private static final Pattern LINE_PATTERN = Pattern.compile("\\v", Pattern.MULTILINE);
+    private static final String LINE_SEPARATOR = System.getProperty("line.separator");
 
     private final RootDoc root;
     private final String title;
@@ -149,7 +154,23 @@ public class JavadocToDocumentConverter {
     private void buildParagraphs(Section.Builder builder, Doc doc) {
         Stream.of(doc.tags())
                 .filter(this::isDocumentation)
-                .forEach(t -> builder.withParagraph(t.name().substring(CUSTOM_TAG_PREFIX.length()), t.text()));
+                .forEach(t -> builder.withParagraph(
+                        t.name().substring(CUSTOM_TAG_PREFIX.length()),
+                        unindentJavadoc(t.text())));
+    }
+
+    private String unindentJavadoc(String javadoc) {
+        return LINE_PATTERN.splitAsStream(javadoc)
+                .map(this::unindentJavadocLine)
+                .collect(joining(LINE_SEPARATOR));
+    }
+
+    private String unindentJavadocLine(String s) {
+        if (s.length() > 1 && Character.isWhitespace(s.charAt(0))) {
+            return s.substring(1);
+        } else {
+            return s;
+        }
     }
 
     private boolean isDocumentation(Tag tag) {

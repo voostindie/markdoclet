@@ -19,6 +19,10 @@ package test.user;
 
 /**
  * @md.common Entry point into the User API.
+ *
+ * ```java
+ * final User user = (User) request.getUserPrincipal();
+ * ```
  */
 public interface User {
 
