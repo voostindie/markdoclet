@@ -49,10 +49,10 @@ public abstract class Section {
             this.paragraphs = new ArrayList<>();
         }
 
-        public Builder<B> withParagraph(String type, String contents) {
+        public B withParagraph(String type, String contents) {
             paragraphs.add(new Paragraph(type, contents));
-            return this;
+            return (B) this;
         }
-
     }
 }
+
