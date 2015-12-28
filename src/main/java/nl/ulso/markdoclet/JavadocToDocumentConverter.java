@@ -165,11 +165,11 @@ public class JavadocToDocumentConverter {
                 .collect(joining(LINE_SEPARATOR));
     }
 
-    private String unindentJavadocLine(String s) {
-        if (s.length() > 1 && Character.isWhitespace(s.charAt(0))) {
-            return s.substring(1);
+    private String unindentJavadocLine(String line) {
+        if (line.length() > 1 && Character.isWhitespace(line.charAt(0))) {
+            return line.substring(1);
         } else {
-            return s;
+            return line;
         }
     }
 
