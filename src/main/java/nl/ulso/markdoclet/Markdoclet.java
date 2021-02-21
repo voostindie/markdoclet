@@ -1,127 +1,111 @@
 package nl.ulso.markdoclet;
 
-import com.sun.javadoc.DocErrorReporter;
-import com.sun.javadoc.LanguageVersion;
-import com.sun.javadoc.RootDoc;
-import nl.ulso.markdoclet.document.Document;
+import jdk.javadoc.doclet.Doclet;
+import jdk.javadoc.doclet.DocletEnvironment;
+import jdk.javadoc.doclet.Reporter;
 
+import javax.lang.model.SourceVersion;
+import javax.tools.Diagnostic;
+import javax.tools.Diagnostic.Kind;
 import java.io.*;
-import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
 import java.util.Properties;
 import java.util.Set;
 
-import static java.util.Arrays.asList;
-
 /**
- * Implements the JavaDoc Doclet "API" (we shouldn't really call a set of static methods that must be implemented
- * an API...)
- * <p>
- * Instead of processing the passed options as it should (rootDoc.options() -> String[][]) and having to go
- * through the horror of crawling through nested arrays twice, I'm cheating a bit here. When validating the
- * parameters I'm setting static variables. These are then passed to the Doclet explicitly. That way I don't have to
- * do the same processing twice. Still, it's not how it was intended...
+ * Implements the JavaDoc Doclet API from Java 9+.
  */
-public class Markdoclet {
+public class Markdoclet implements Doclet {
 
     private static final String OPTION_OUTPUT = "-output";
     private static final String OPTION_PROPERTIES = "-properties";
     private static final String OPTION_TITLE = "-title";
 
-    private static File outputFile = null;
-    private static Properties properties = null;
-    private static String title = null;
+    private File outputFile = null;
+    private Properties properties = null;
+    private String title = null;
 
-    public static boolean start(RootDoc root) {
-        root.printNotice("Parsing Java code");
-        final Document document = new JavadocToDocumentConverter(root, title, properties).createDocument();
-        root.printNotice("Generating Markdown output to " + outputFile);
-        final String error = new DocumentToMarkdownWriter(createOutputWriter()).writeDocument(document);
-        final boolean result = (error == null);
+    private Reporter reporter;
+
+    @Override
+    public void init(Locale locale, Reporter reporter) {
+        this.reporter = reporter;
+    }
+
+    @Override
+    public String getName() {
+        return "Markdoclet";
+    }
+
+    @Override
+    public Set<? extends Option> getSupportedOptions() {
+        return Set.of(
+                new StandardOption(OPTION_OUTPUT, "Write Doclet output to the specified file", 1) {
+                    @Override
+                    public boolean process(String option, List<String> arguments) {
+                        outputFile = new File(arguments.get(0));
+                        if (outputFile.exists() && outputFile.isDirectory()) {
+                            reporter.print(Diagnostic.Kind.ERROR, "Output file "
+                                    + outputFile.getAbsolutePath() + " is a directory.");
+                            return false;
+                        }
+                        if (outputFile.exists() && !outputFile.canWrite()) {
+                            reporter.print(Diagnostic.Kind.ERROR, "Output file "
+                                    + outputFile.getAbsolutePath() + " exists and cannot be overwritten.");
+                            return false;
+                        }
+                        return true;
+                    }
+                },
+                new StandardOption(OPTION_PROPERTIES, "Properties file to use", 1) {
+                    @Override
+                    public boolean process(String option, List<String> arguments) {
+                        var propertiesFile = arguments.get(0);
+                        try (var fileReader = new FileReader(propertiesFile);
+                             var reader = new BufferedReader(fileReader)) {
+                            properties = new Properties();
+                            properties.load(reader);
+                        } catch (IOException e) {
+                            reporter.print(Diagnostic.Kind.ERROR,
+                                    "Couldn't load properties from " + propertiesFile);
+                            return false;
+                        }
+                        return true;
+                    }
+                },
+                new StandardOption(OPTION_TITLE, "Title to use in the output document", 1) {
+                    @Override
+                    public boolean process(String option, List<String> arguments) {
+                        title = arguments.get(0);
+                        return true;
+                    }
+                }
+        );
+    }
+
+    @Override
+    public SourceVersion getSupportedSourceVersion() {
+        return SourceVersion.RELEASE_11;
+    }
+
+    @Override
+    public boolean run(DocletEnvironment environment) {
+        if (outputFile == null) {
+            reporter.print(Kind.ERROR, "Output file is not set. Please use -output to do so!");
+            return false;
+        }
+        reporter.print(Kind.NOTE, "Parsing Java code");
+        var document = new JavadocToDocumentConverter(environment, reporter, title, properties)
+                .createDocument();
+        reporter.print(Kind.NOTE, "Generating Markdown output to " + outputFile);
+        var error = new DocumentToMarkdownWriter(createOutputWriter()).writeDocument(document);
+        var result = (error == null);
         if (error != null) {
-            root.printError(error);
+            reporter.print(Kind.ERROR, error);
         }
-        // Because we're mucking around with static fields, we must ensure we reset them too. Yuck.
-        title = null;
-        properties = null;
-        outputFile = null;
-        root.printNotice("Done!");
+        reporter.print(Kind.NOTE, "Done!");
         return result;
-    }
-
-    public static LanguageVersion languageVersion() {
-        return LanguageVersion.JAVA_1_5;
-    }
-
-
-    public static int optionLength(String option) {
-        switch (option) {
-            case OPTION_OUTPUT:
-            case OPTION_PROPERTIES:
-            case OPTION_TITLE:
-                return 2;
-            default:
-                return 0;
-        }
-    }
-
-    public static boolean validOptions(String[][] options, DocErrorReporter reporter) {
-        final Set<String> supportedOptions = new HashSet<>(asList(OPTION_OUTPUT, OPTION_PROPERTIES, OPTION_TITLE));
-        final Set<String> optionsFound = new HashSet<>();
-        boolean valid = true;
-        for (String[] option : options) {
-            final String name = option[0];
-            if (supportedOptions.contains(name)) {
-                if (optionsFound.contains(name)) {
-                    reporter.printError("Only one " + name + " option allowed.");
-                    valid = false;
-                }
-                optionsFound.add(name);
-                final String value = option[1];
-                if (name.equals(OPTION_OUTPUT)) {
-                    valid = valid && verifyOutputFile(value, reporter);
-                } else if (name.equals(OPTION_PROPERTIES)) {
-                    valid = valid && verifyPropertiesFile(value, reporter);
-                } else if (name.equals(OPTION_TITLE)) {
-                    valid = valid && verifyTitle(value);
-                }
-            }
-        }
-        if (!optionsFound.contains(OPTION_OUTPUT)) {
-            reporter.printError("Missing required property -output");
-            return false;
-        }
-        return valid;
-    }
-
-    private static boolean verifyOutputFile(String filename, DocErrorReporter reporter) {
-        final File file = new File(filename);
-        if (file.exists() && file.isDirectory()) {
-            reporter.printError("Output file " + filename + " is a directory.");
-            return false;
-        }
-        if (file.exists() && !file.canWrite()) {
-            reporter.printError("Output file " + filename + " exists and cannot be overwritten.");
-            return false;
-        }
-        outputFile = file;
-        return true;
-    }
-
-    private static boolean verifyPropertiesFile(String propertiesFile, DocErrorReporter reporter) {
-        try (FileReader fileReader = new FileReader(propertiesFile);
-             BufferedReader reader = new BufferedReader(fileReader)) {
-            properties = new Properties();
-            properties.load(reader);
-        } catch (IOException e) {
-            reporter.printError("Couldn't load properties from " + propertiesFile);
-            return false;
-        }
-        return true;
-    }
-
-    private static boolean verifyTitle(String value) {
-        title = value;
-        return true;
     }
 
     /*
@@ -138,7 +122,7 @@ public class Markdoclet {
         customOutputWriter = null;
     }
 
-    private static PrintWriter createOutputWriter() {
+    private PrintWriter createOutputWriter() {
         if (customOutputWriter != null) {
             return customOutputWriter;
         }
@@ -146,6 +130,43 @@ public class Markdoclet {
             return new PrintWriter(new BufferedWriter(new FileWriter(outputFile)));
         } catch (IOException e) {
             throw new IllegalStateException("Cannot open file for writing: " + e.getMessage(), e);
+        }
+    }
+
+    private static abstract class StandardOption implements Option {
+
+        private final String name;
+        private final String description;
+        private final int argumentCount;
+
+        StandardOption(String name, String description, int argumentCount) {
+            this.name = name;
+            this.description = description;
+            this.argumentCount = argumentCount;
+        }
+
+        @Override
+        public int getArgumentCount() {
+            return argumentCount;
+        }
+
+        @Override
+        public String getDescription() {
+            return description;
+        }
+
+        @Override
+        public Kind getKind() {
+            return Kind.STANDARD;
+        }
+
+        @Override
+        public List<String> getNames() {
+            return List.of(name);
+        }
+
+        public String getParameters() {
+            return "";
         }
     }
 }

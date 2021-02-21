@@ -1,7 +1,6 @@
 package nl.ulso.markdoclet;
 
 import freemarker.template.Configuration;
-import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import nl.ulso.markdoclet.document.Document;
 
@@ -21,7 +20,7 @@ public class DocumentToMarkdownWriter {
 
     public DocumentToMarkdownWriter(PrintWriter writer) {
         this.writer = writer;
-        configuration = new Configuration(Configuration.VERSION_2_3_23);
+        configuration = new Configuration(Configuration.VERSION_2_3_31);
         configuration.setClassLoaderForTemplateLoading(
                 Thread.currentThread().getContextClassLoader(),
                 "nl/ulso/markdoclet");
@@ -31,10 +30,10 @@ public class DocumentToMarkdownWriter {
 
     public String writeDocument(Document document) {
         try {
-            final Template template = configuration.getTemplate("document.ftl");
-            final HashMap<String, Object> model = new HashMap<>();
+            var template = configuration.getTemplate("document.ftl");
+            var model = new HashMap<String, Object>();
             model.put("document", document);
-            model.put("dateGenerated", new SimpleDateFormat("dd-MM-YYYY").format(new Date()));
+            model.put("dateGenerated", new SimpleDateFormat("dd-MM-yyyy").format(new Date()));
             template.process(model, writer);
         } catch (IOException | TemplateException e) {
             return "Could not generate Markdown due to error: " + e.getMessage();

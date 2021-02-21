@@ -1,7 +1,7 @@
 package nl.ulso.markdoclet;
 
-import javax.tools.DocumentationTool;
-import javax.tools.StandardJavaFileManager;
+import jdk.javadoc.doclet.Doclet;
+
 import javax.tools.ToolProvider;
 import java.io.File;
 import java.io.PrintWriter;
@@ -45,15 +45,16 @@ public abstract class AbstractDocletTestCase {
     }
 
     private DocletResult runJavaDoc(List<String> files, List<String> options) throws Exception {
-        final Class<?> docletClass = resolveDocletClass();
+        final Class<Doclet> docletClass = resolveDocletClass();
         try (StringWriter outputBuffer = new StringWriter();
              PrintWriter outputWriter = new PrintWriter(outputBuffer)) {
             prepareOutputWriter(docletClass, outputWriter);
-            final CollectingDiagnosticListener diagnosticListener = new CollectingDiagnosticListener();
-            final StandardJavaFileManager fileManager = ToolProvider.getSystemJavaCompiler()
+
+            var diagnosticListener = new CollectingDiagnosticListener();
+            var fileManager = ToolProvider.getSystemJavaCompiler()
                     .getStandardFileManager(diagnosticListener, null, null);
-            final DocumentationTool documentationTool = ToolProvider.getSystemDocumentationTool();
-            final DocumentationTool.DocumentationTask task = documentationTool.getTask(
+            var documentationTool = ToolProvider.getSystemDocumentationTool();
+            var task = documentationTool.getTask(
                     null,
                     fileManager,
                     diagnosticListener,
@@ -68,11 +69,11 @@ public abstract class AbstractDocletTestCase {
         }
     }
 
-    private Class resolveDocletClass() throws ClassNotFoundException {
+    private Class<Doclet> resolveDocletClass()  {
         final String testClassName = this.getClass().getCanonicalName();
         final String docletClassName = testClassName.substring(0, testClassName.length() - 4);
         try {
-            return Class.forName(docletClassName);
+            return (Class<Doclet>) Class.forName(docletClassName);
         } catch (ClassNotFoundException e) {
             throw new IllegalStateException("Cannot find Doclet class. Expecting a class called "
                     + docletClassName + ". Did you make a typo somewhere?");

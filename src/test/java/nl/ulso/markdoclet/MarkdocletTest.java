@@ -15,7 +15,7 @@ public class MarkdocletTest extends AbstractDocletTestCase {
         DocletResult result = runDoclet(asList("-output", "test.md"));
         result.assertFailure();
         result.assertNoOutput();
-        result.assertError("No packages or classes specified");
+        result.assertError("No modules, packages or classes specified");
     }
 
     @Test

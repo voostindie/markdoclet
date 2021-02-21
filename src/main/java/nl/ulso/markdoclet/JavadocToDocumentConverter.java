@@ -1,16 +1,22 @@
 package nl.ulso.markdoclet;
 
-import com.sun.javadoc.ClassDoc;
-import com.sun.javadoc.Doc;
-import com.sun.javadoc.RootDoc;
-import com.sun.javadoc.Tag;
+import com.sun.source.doctree.DocCommentTree;
+import com.sun.source.doctree.UnknownBlockTagTree;
+import com.sun.source.util.SimpleDocTreeVisitor;
+import jdk.javadoc.doclet.DocletEnvironment;
+import jdk.javadoc.doclet.Reporter;
+import nl.ulso.markdoclet.document.Enumeration;
 import nl.ulso.markdoclet.document.*;
 
-import java.util.Properties;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.VariableElement;
+import javax.tools.Diagnostic;
+import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.joining;
+import static javax.lang.model.element.ElementKind.*;
 
 /**
  * Generates functional documentation in Markdown format from Java API's.
@@ -36,20 +42,26 @@ import static java.util.stream.Collectors.joining;
  * foo=In special situation "foo"
  * bar=In special situation "bar"
  * </code></pre>
+ * <p>
+ * In February 2021 I updated the implementation for JDK 9+'s newer Doclet API. I "made it work". I'm sure
+ * the code could be largely rewritten using new API's, with visitors and such. I didn't.
+ * </p>
  */
 public class JavadocToDocumentConverter {
 
-    private static final String CUSTOM_TAG_PREFIX = "@md.";
-    private static final String HIDE_TAG = CUSTOM_TAG_PREFIX + "hide";
+    private static final String CUSTOM_TAG_PREFIX = "md.";
+    private static final String HIDE_TAG = "@" + CUSTOM_TAG_PREFIX + "hide";
     private static final Pattern LINE_PATTERN = Pattern.compile("\\v", Pattern.MULTILINE);
     private static final String LINE_SEPARATOR = System.getProperty("line.separator");
 
-    private final RootDoc root;
+    private final DocletEnvironment environment;
+    private final Reporter reporter;
     private final String title;
     private final Properties properties;
 
-    JavadocToDocumentConverter(RootDoc root, String title, Properties properties) {
-        this.root = root;
+    JavadocToDocumentConverter(DocletEnvironment environment, Reporter reporter, String title, Properties properties) {
+        this.environment = environment;
+        this.reporter = reporter;
         this.title = title != null ? title : "API documentation";
         this.properties = properties != null ? properties : new Properties();
     }
@@ -63,83 +75,96 @@ public class JavadocToDocumentConverter {
     }
 
     private void buildInterfaces(Document.Builder documentBuilder) {
-        Stream.of(root.classes())
-                .filter(Doc::isInterface)
+        environment.getIncludedElements()
+                .stream()
+                .filter(this::isInterface)
                 .filter(this::isVisible)
                 .peek(this::log)
-                .forEach(c -> {
-                    final Interface.Builder builder = documentBuilder.withInterface(c.name());
-                    buildParagraphs(builder, c);
-                    buildAttributes(builder, c);
-                    buildOperations(builder, c);
+                .forEach(type -> {
+                    final Interface.Builder builder = documentBuilder.withInterface(type.toString());
+                    buildParagraphs(builder, type);
+                    buildAttributes(builder, type);
+                    buildOperations(builder, type);
                 });
     }
 
-    private void buildAttributes(Interface.Builder interfaceBuilder, ClassDoc clazz) {
-        Stream.of(clazz.methods())
+    private void buildAttributes(Interface.Builder interfaceBuilder, Element element) {
+        element.getEnclosedElements().stream()
                 .filter(this::isAttribute)
                 .filter(this::isVisible)
                 .peek(this::log)
-                .forEach(m -> {
+                .forEach(method -> {
+                    var executableElement = (ExecutableElement) method;
                     final Attribute.Builder builder = interfaceBuilder.withAttribute(
-                            asAttributeName(m.name()), m.returnType().simpleTypeName());
-                    buildParagraphs(builder, m);
+                            asAttributeName(executableElement.getSimpleName().toString()),
+                                    executableElement.getReturnType().toString());
+                    buildParagraphs(builder, method);
                 });
     }
 
-    private void buildOperations(Interface.Builder interfaceBuilder, ClassDoc clazz) {
-        Stream.of(clazz.methods())
+    private void buildOperations(Interface.Builder interfaceBuilder, Element element) {
+        element.getEnclosedElements().stream()
                 .filter(this::isOperation)
                 .filter(this::isVisible)
                 .peek(this::log)
-                .forEach(m -> {
-                    final Operation.Builder builder = interfaceBuilder.withOperation(
-                            m.name(), m.returnType().simpleTypeName());
-                    buildParagraphs(builder, m);
-                    Stream.of(m.parameters()).forEach(p -> builder.withParameter(p.name(), p.type().simpleTypeName()));
+                .forEach(method -> {
+                    var executableElement = (ExecutableElement) method;
+                    var builder = interfaceBuilder.withOperation(
+                            executableElement.getSimpleName().toString(), executableElement.getReturnType().toString());
+                    buildParagraphs(builder, method);
+                    ((ExecutableElement) method).getParameters().forEach(parameter -> {
+                        var variable = (VariableElement) parameter;
+                        builder.withParameter(variable.getSimpleName().toString(), variable.asType().toString());
+                    });
                 });
     }
 
-    private boolean isAttribute(Doc doc) {
-        return doc.name().startsWith("get") || doc.name().startsWith("is");
+    private boolean isAttribute(Element element) {
+        var name = element.getSimpleName().toString();
+        return name.startsWith("get") || name.startsWith("is");
     }
 
     private String asAttributeName(String name) {
         return name.substring(name.startsWith("is") ? 2 : 3);
     }
 
-    private boolean isOperation(Doc doc) {
-        return !isAttribute(doc);
+    private boolean isOperation(Element element) {
+        return !isAttribute(element);
     }
 
     private void buildEnumerations(Document.Builder documentBuilder) {
-        Stream.of(root.classes())
-                .filter(Doc::isEnum)
+        environment.getIncludedElements()
+                .stream()
+                .filter(this::isEnumeration)
                 .filter(this::isVisible)
                 .peek(this::log)
-                .forEach(c -> {
-                    final Enumeration.Builder builder = documentBuilder.withEnumeration(c.name());
-                    buildParagraphs(builder, c);
-                    buildConstants(builder, c);
+                .forEach(e -> {
+                    final Enumeration.Builder builder = documentBuilder.withEnumeration(e.toString());
+                    buildParagraphs(builder, e);
+                    buildConstants(builder, e);
                 });
     }
 
-    private void buildConstants(Enumeration.Builder enumerationBuilder, ClassDoc clazz) {
-        Stream.of(clazz.enumConstants())
+    private void buildConstants(Enumeration.Builder enumerationBuilder, Element enumeration) {
+        enumeration.getEnclosedElements().stream()
+                .filter(this::isEnumConstant)
                 .filter(this::isVisible)
                 .peek(this::log)
-                .forEach(f -> {
-                    final Constant.Builder builder = enumerationBuilder.withConstant(f.name());
-                    buildParagraphs(builder, f);
+                .forEach(constant -> {
+                    final Constant.Builder builder = enumerationBuilder.withConstant(constant.toString());
+                    buildParagraphs(builder, constant);
                 });
     }
 
-    private void buildParagraphs(Section.Builder builder, Doc doc) {
-        Stream.of(doc.tags())
-                .filter(this::isDocumentation)
-                .forEach(t -> builder.withParagraph(
-                        t.name().substring(CUSTOM_TAG_PREFIX.length()),
-                        unindentJavadoc(t.text())));
+    private void buildParagraphs(Section.Builder builder, Element element) {
+        var blockTags = findBlockTags(element);
+        blockTags.forEach((name, text) -> {
+            if (name.startsWith(CUSTOM_TAG_PREFIX)) {
+                builder.withParagraph(
+                        name.substring(CUSTOM_TAG_PREFIX.length()),
+                        unindentJavadoc(String.join("\n", text)));
+            }
+        });
     }
 
     private String unindentJavadoc(String javadoc) {
@@ -156,27 +181,67 @@ public class JavadocToDocumentConverter {
         }
     }
 
-    private boolean isDocumentation(Tag tag) {
-        return tag.name().startsWith(CUSTOM_TAG_PREFIX);
+    private boolean isInterface(Element element) {
+        return element.getKind().isInterface();
     }
 
-    private boolean isVisible(Doc doc) {
-        return Stream.of(doc.tags()).map(Tag::name).noneMatch(HIDE_TAG::equals);
+    private boolean isEnumeration(Element element) {
+        return element.getKind() == ENUM;
     }
 
-    private void log(Doc doc) {
+    private boolean isEnumConstant(Element element) {
+        return element.getKind() == ENUM_CONSTANT;
+    }
+
+    private boolean isVisible(Element element) {
+        var commentTree = environment.getDocTrees().getDocCommentTree(element);
+        if (commentTree == null) {
+            return false;
+        }
+        return commentTree.getBlockTags().stream()
+                .noneMatch(docTree -> docTree.toString().startsWith(HIDE_TAG));
+    }
+
+    private void log(Element element) {
         final String type;
-        if (doc.isInterface()) {
+        var kind = element.getKind();
+        if (kind.isInterface()) {
             type = "interface";
-        } else if (doc.isEnum()) {
+        } else if (kind == ENUM) {
             type = "enumeration";
-        } else if (doc.isMethod()) {
+        } else if (kind == METHOD) {
             type = "method";
-        } else if (doc.isEnumConstant()) {
+        } else if (kind == ENUM_CONSTANT) {
             type = "constant";
         } else {
             type = "type";
         }
-        root.printNotice("Constructing documentation for " + type + " " + doc.name());
+        reporter.print(Diagnostic.Kind.NOTE,
+                "Constructing documentation for " + type + " " + element.getSimpleName());
+    }
+
+    Map<String, List<String>> findBlockTags(Element element) {
+        var docCommentTree = environment.getDocTrees().getDocCommentTree(element);
+        var scanner = new BlockTagScanner();
+        scanner.visit(docCommentTree, null);
+        return scanner.tags;
+
+    }
+
+    private static class BlockTagScanner extends SimpleDocTreeVisitor<Void, Void> {
+        private final Map<String, List<String>> tags = new TreeMap<>();
+
+        @Override
+        public Void visitDocComment(DocCommentTree tree, Void p) {
+            return visit(tree.getBlockTags(), null);
+        }
+
+        @Override
+        public Void visitUnknownBlockTag(UnknownBlockTagTree tree, Void p) {
+            var name = tree.getTagName();
+            var content = tree.getContent().toString();
+            tags.computeIfAbsent(name, n -> new ArrayList<>()).add(content);
+            return null;
+        }
     }
 }
