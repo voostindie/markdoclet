@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/voostindie/markdoclet.svg?branch=master)](https://travis-ci.org/voostindie/markdoclet)
 [![Code Coverage](https://codecov.io/gh/voostindie/markdoclet/branch/master/graph/badge.svg)](https://codecov.io/gh/voostindie/markdoclet)
+[![Known Vulnerabilities](https://snyk.io/test/github/voostindie/markdoclet/badge.svg?targetFile=build.gradle)](https://snyk.io/test/github/voostindie/markdoclet?targetFile=build.gradle)
 
 **Update February 2021**: in order to fix a vulnerability with FreeMarker I went down a really deep rabbit hole and updated the Doclet for JDK 9+, using the updated Doclet API. This newer version doesn't work with JDK 8 or lower. I tested this version on OpenJDK 11.
 
