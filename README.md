@@ -1,6 +1,6 @@
 # Markdoclet
 
-[![Build Status](https://travis-ci.org/voostindie/markdoclet.svg?branch=master)](https://travis-ci.org/voostindie/markdoclet)
+[![Build Status](https://travis-ci.com/voostindie/markdoclet.svg?branch=master)](https://travis-ci.com/voostindie/markdoclet)
 [![Code Coverage](https://codecov.io/gh/voostindie/markdoclet/branch/master/graph/badge.svg)](https://codecov.io/gh/voostindie/markdoclet)
 [![Known Vulnerabilities](https://snyk.io/test/github/voostindie/markdoclet/badge.svg?targetFile=build.gradle)](https://snyk.io/test/github/voostindie/markdoclet?targetFile=build.gradle)
 
