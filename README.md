@@ -4,6 +4,8 @@
 [![Code Coverage](https://codecov.io/gh/voostindie/markdoclet/branch/master/graph/badge.svg)](https://codecov.io/gh/voostindie/markdoclet)
 [![Known Vulnerabilities](https://snyk.io/test/github/voostindie/markdoclet/badge.svg?targetFile=build.gradle)](https://snyk.io/test/github/voostindie/markdoclet?targetFile=build.gradle)
 
+**Update September 2021**: as I'm not using this tool anymore, I'm archiving it. Right now it's working well with modern JDKs, so it's still usable. But I'm not planning on maintaining it any longer. Who knows though?
+
 **Update February 2021**: in order to fix a vulnerability with FreeMarker I went down a really deep rabbit hole and updated the Doclet for JDK 9+, using the updated Doclet API. This newer version doesn't work with JDK 8 or lower. I tested this version on OpenJDK 11.
 
 This Doclet generates Markdown documentation out of Javadoc comments. Before you run outside to go jumping with joy please continue reading, because this Doclet probably doesn't do what you'd expect.
